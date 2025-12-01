@@ -149,13 +149,13 @@ async function fetchAndParseNewIPs(piu) {
 }
 
 // 生成VLESS链接
-function generateLinksFromSource(list, user, workerDomain, disableNonTLS = false) {
+function generateLinksFromSource(list, user, workerDomain, disableNonTLS = false, customPath = '/?ed=2048') {
     const CF_HTTP_PORTS = [80, 8080, 8880, 2052, 2082, 2086, 2095];
     const CF_HTTPS_PORTS = [443, 2053, 2083, 2087, 2096, 8443];
     const defaultHttpsPorts = [443];
     const defaultHttpPorts = disableNonTLS ? [] : [80];
     const links = [];
-    const wsPath = '/?ed=2048';
+    const wsPath = customPath || '/?ed=2048';
     const proto = 'vless';
 
     list.forEach(item => {
@@ -215,13 +215,13 @@ function generateLinksFromSource(list, user, workerDomain, disableNonTLS = false
 }
 
 // 生成Trojan链接
-async function generateTrojanLinksFromSource(list, user, workerDomain, disableNonTLS = false) {
+async function generateTrojanLinksFromSource(list, user, workerDomain, disableNonTLS = false, customPath = '/?ed=2048') {
     const CF_HTTP_PORTS = [80, 8080, 8880, 2052, 2082, 2086, 2095];
     const CF_HTTPS_PORTS = [443, 2053, 2083, 2087, 2096, 8443];
     const defaultHttpsPorts = [443];
     const defaultHttpPorts = disableNonTLS ? [] : [80];
     const links = [];
-    const wsPath = '/?ed=2048';
+    const wsPath = customPath || '/?ed=2048';
     const password = user;  // Trojan使用UUID作为密码
 
     list.forEach(item => {
@@ -281,13 +281,13 @@ async function generateTrojanLinksFromSource(list, user, workerDomain, disableNo
 }
 
 // 生成VMess链接
-function generateVMessLinksFromSource(list, user, workerDomain, disableNonTLS = false) {
+function generateVMessLinksFromSource(list, user, workerDomain, disableNonTLS = false, customPath = '/?ed=2048') {
     const CF_HTTP_PORTS = [80, 8080, 8880, 2052, 2082, 2086, 2095];
     const CF_HTTPS_PORTS = [443, 2053, 2083, 2087, 2096, 8443];
     const defaultHttpsPorts = [443];
     const defaultHttpPorts = disableNonTLS ? [] : [80];
     const links = [];
-    const wsPath = '/?ed=2048';
+    const wsPath = customPath || '/?ed=2048';
 
     list.forEach(item => {
         let nodeNameBase = item.isp ? item.isp.replace(/\s/g, '_') : (item.name || item.domain || item.ip);
@@ -345,11 +345,11 @@ function generateVMessLinksFromSource(list, user, workerDomain, disableNonTLS = 
 }
 
 // 从GitHub IP生成链接（VLESS）
-function generateLinksFromNewIPs(list, user, workerDomain) {
+function generateLinksFromNewIPs(list, user, workerDomain, customPath = '/?ed=2048') {
     const CF_HTTP_PORTS = [80, 8080, 8880, 2052, 2082, 2086, 2095];
     const CF_HTTPS_PORTS = [443, 2053, 2083, 2087, 2096, 8443];
     const links = [];
-    const wsPath = '/?ed=2048';
+    const wsPath = customPath || '/?ed=2048';
     const proto = 'vless';
     
     list.forEach(item => {
@@ -374,12 +374,13 @@ function generateLinksFromNewIPs(list, user, workerDomain) {
 }
 
 // 生成订阅内容
-async function handleSubscriptionRequest(request, user, customDomain, piu, ipv4Enabled, ipv6Enabled, ispMobile, ispUnicom, ispTelecom, evEnabled, etEnabled, vmEnabled, disableNonTLS) {
+async function handleSubscriptionRequest(request, user, customDomain, piu, ipv4Enabled, ipv6Enabled, ispMobile, ispUnicom, ispTelecom, evEnabled, etEnabled, vmEnabled, disableNonTLS, customPath) {
     const url = new URL(request.url);
     const finalLinks = [];
     const workerDomain = url.hostname;  // workerDomain始终是请求的hostname
     const nodeDomain = customDomain || url.hostname;  // 用户输入的域名用于生成节点时的host/sni
     const target = url.searchParams.get('target') || 'base64';
+    const wsPath = customPath || '/?ed=2048';
 
     async function addNodesFromList(list) {
         // 确保至少有一个协议被启用
@@ -387,13 +388,13 @@ async function handleSubscriptionRequest(request, user, customDomain, piu, ipv4E
         const useVL = hasProtocol ? evEnabled : true;  // 如果没有选择任何协议，默认使用VLESS
         
         if (useVL) {
-            finalLinks.push(...generateLinksFromSource(list, user, nodeDomain, disableNonTLS));
+            finalLinks.push(...generateLinksFromSource(list, user, nodeDomain, disableNonTLS, wsPath));
         }
         if (etEnabled) {
-            finalLinks.push(...await generateTrojanLinksFromSource(list, user, nodeDomain, disableNonTLS));
+            finalLinks.push(...await generateTrojanLinksFromSource(list, user, nodeDomain, disableNonTLS, wsPath));
         }
         if (vmEnabled) {
-            finalLinks.push(...generateVMessLinksFromSource(list, user, nodeDomain, disableNonTLS));
+            finalLinks.push(...generateVMessLinksFromSource(list, user, nodeDomain, disableNonTLS, wsPath));
         }
     }
 
@@ -429,7 +430,7 @@ async function handleSubscriptionRequest(request, user, customDomain, piu, ipv4E
                 const useVL = hasProtocol ? evEnabled : true;  // 如果没有选择任何协议，默认使用VLESS
                 
                 if (useVL) {
-                    finalLinks.push(...generateLinksFromNewIPs(newIPList, user, nodeDomain));
+                    finalLinks.push(...generateLinksFromNewIPs(newIPList, user, nodeDomain, wsPath));
                 }
                 // GitHub IP只支持VLESS格式
             }
@@ -897,6 +898,12 @@ function generateHomePage(scuValue) {
                 <input type="text" id="uuid" placeholder="请输入UUID">
             </div>
             
+            <div class="form-group">
+                <label>WebSocket路径（可选）</label>
+                <input type="text" id="customPath" placeholder="留空则使用默认路径 /?ed=2048" value="/?ed=2048">
+                <small style="display: block; margin-top: 6px; color: #86868b; font-size: 13px;">自定义WebSocket路径，例如：/v2ray 或 /?ed=2048</small>
+            </div>
+            
             <div class="switch-group">
                 <label>启用优选域名</label>
                 <div class="switch active" id="switchDomain" onclick="toggleSwitch('switchDomain')"></div>
@@ -1070,6 +1077,7 @@ function generateHomePage(scuValue) {
         function generateClientLink(clientType, clientName) {
             const domain = document.getElementById('domain').value.trim();
             const uuid = document.getElementById('uuid').value.trim();
+            const customPath = document.getElementById('customPath').value.trim() || '/?ed=2048';
             
             if (!domain || !uuid) {
                 alert('请先填写域名和UUID');
@@ -1117,6 +1125,11 @@ function generateHomePage(scuValue) {
             
             // 添加TLS控制
             if (switches.switchTLS) subscriptionUrl += '&dkby=yes';
+            
+            // 添加自定义路径
+            if (customPath && customPath !== '/?ed=2048') {
+                subscriptionUrl += \`&path=\${encodeURIComponent(customPath)}\`;
+            }
             
             let finalUrl = subscriptionUrl;
             let schemeUrl = '';
@@ -1253,7 +1266,10 @@ export default {
             // TLS控制
             const disableNonTLS = url.searchParams.get('dkby') === 'yes';
             
-            return await handleSubscriptionRequest(request, uuid, domain, piu, ipv4Enabled, ipv6Enabled, ispMobile, ispUnicom, ispTelecom, evEnabled, etEnabled, vmEnabled, disableNonTLS);
+            // 自定义路径
+            const customPath = url.searchParams.get('path') || '/?ed=2048';
+            
+            return await handleSubscriptionRequest(request, uuid, domain, piu, ipv4Enabled, ipv6Enabled, ispMobile, ispUnicom, ispTelecom, evEnabled, etEnabled, vmEnabled, disableNonTLS, customPath);
         }
         
         return new Response('Not Found', { status: 404 });
